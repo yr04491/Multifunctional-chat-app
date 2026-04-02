@@ -1,173 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Edit2, Check, X, LogOut, Globe, Languages, Loader2, Settings, Monitor, Moon, Sun, TreePine, Zap, Hash } from "lucide-react";
+import { Send, Edit2, Check, LogOut, Globe, Loader2, Settings } from "lucide-react";
 import { useChat, Message } from "@/lib/useChat";
 import type { User } from "firebase/auth";
 import { translateText } from "@/app/actions/translate";
-
-const LANGUAGES = [
-  { code: "en", name: "英語 🇺🇸" },
-  { code: "ar", name: "アラビア語 🇸🇦" },
-  { code: "ru", name: "ロシア語 🇷🇺" },
-  { code: "hi", name: "ヒンディー語 🇮🇳" },
-  { code: "zh", name: "中国語 🇨🇳" },
-  { code: "ko", name: "韓国語 🇰🇷" },
-  { code: "th", name: "タイ語 🇹🇭" }
-];
-
-const THEMES = {
-  dark: {
-    name: "ダーク",
-    icon: Moon,
-    appBg: "bg-zinc-950 text-white selection:bg-indigo-500/30",
-    headerBg: "border-zinc-800 bg-zinc-900/60",
-    headerText: "text-zinc-100",
-    headerMuted: "text-indigo-400",
-    headerIconBg: "from-indigo-600 to-violet-500 shadow-indigo-600/20 text-white",
-    headerButton: "text-zinc-400 hover:bg-zinc-800 hover:text-rose-400",
-    settingsBtnDefault: "bg-zinc-800/50 text-zinc-400 border-transparent hover:bg-zinc-800",
-    settingsBtnActive: "bg-indigo-500/20 text-indigo-400 border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.2)]",
-    sysMessage: "bg-zinc-800/60 text-zinc-400 border-zinc-700/50",
-    messageMineBg: "bg-indigo-600 text-white shadow-indigo-900/10 hover:shadow-indigo-900/30 border-transparent",
-    messageTheirsBg: "bg-zinc-800/90 text-zinc-100 shadow-zinc-900/50 border-zinc-700/50 hover:bg-zinc-800",
-    messageAvatarDefault: "bg-zinc-800 text-zinc-400",
-    messageSenderName: "text-zinc-500",
-    editTextarea: "bg-black/20 border-indigo-400/50 text-white focus:ring-white/50",
-    editBtnCancel: "hover:bg-white/10 text-white",
-    editBtnSave: "bg-white text-indigo-600",
-    backTranslateBtn: "text-indigo-300 hover:text-indigo-200 bg-indigo-500/10 hover:bg-indigo-500/20",
-    timestampMine: "text-indigo-100",
-    timestampTheirs: "text-zinc-400",
-    inputWrapperBg: "border-zinc-800/60 bg-zinc-900/60",
-    inputArea: "border-zinc-700 bg-zinc-900/80 text-zinc-100 placeholder-zinc-500 focus:border-indigo-500 focus:bg-zinc-800 focus:ring-indigo-500/10",
-    sendBtn: "bg-indigo-600 text-white shadow-indigo-600/30 hover:bg-indigo-500 hover:shadow-indigo-500/40 ring-indigo-500/30",
-    modalOverlay: "bg-black/60",
-    modalBg: "bg-zinc-900 border-zinc-700/50",
-    modalSectionBg: "border-zinc-800 bg-zinc-950/50",
-    modalLabel: "text-zinc-200",
-    modalSubLabel: "text-zinc-400",
-    toggleBg: "bg-zinc-700 peer-checked:bg-indigo-500",
-    langBtnDefault: "bg-zinc-800/80 border-transparent text-zinc-300 hover:bg-zinc-700 hover:text-white",
-    langBtnActive: "bg-indigo-500/20 border-indigo-500 text-indigo-300 shadow-[inset_0_0_10px_rgba(99,102,241,0.2)]",
-    modalConfirmBtn: "bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-900/20",
-    accentText: "text-indigo-400",
-    optionsBtnIcon: "text-indigo-400"
-  },
-  light: {
-    name: "ライト",
-    icon: Sun,
-    appBg: "bg-slate-50 text-slate-900 selection:bg-blue-500/30",
-    headerBg: "border-slate-200 bg-white/80",
-    headerText: "text-slate-900",
-    headerMuted: "text-blue-500",
-    headerIconBg: "from-blue-500 to-cyan-400 shadow-blue-500/20 text-white",
-    headerButton: "text-slate-500 hover:bg-slate-100 hover:text-rose-500",
-    settingsBtnDefault: "bg-white text-slate-500 border-slate-200 shadow-sm hover:bg-slate-50",
-    settingsBtnActive: "bg-blue-50 text-blue-600 border-blue-200 shadow-[0_0_15px_rgba(59,130,246,0.15)]",
-    sysMessage: "bg-slate-200/60 text-slate-500 border-slate-300/50",
-    messageMineBg: "bg-blue-500 text-white shadow-blue-900/10 hover:shadow-blue-900/20 border-transparent",
-    messageTheirsBg: "bg-white text-slate-800 shadow-sm border-slate-200 hover:bg-slate-50",
-    messageAvatarDefault: "bg-slate-200 text-slate-600",
-    messageSenderName: "text-slate-500",
-    editTextarea: "bg-white border-blue-300 text-slate-900 focus:ring-blue-500/30",
-    editBtnCancel: "text-slate-100 hover:bg-white/20",
-    editBtnSave: "bg-white text-blue-600",
-    backTranslateBtn: "text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100",
-    timestampMine: "text-blue-100",
-    timestampTheirs: "text-slate-400",
-    inputWrapperBg: "border-slate-200 bg-white/60",
-    inputArea: "border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:border-blue-400 focus:bg-white focus:ring-blue-500/20",
-    sendBtn: "bg-blue-500 text-white shadow-blue-500/30 hover:bg-blue-600 hover:shadow-blue-600/40 ring-blue-500/30",
-    modalOverlay: "bg-slate-900/40 backdrop-blur-sm",
-    modalBg: "bg-white border-slate-200",
-    modalSectionBg: "border-slate-200 bg-slate-50",
-    modalLabel: "text-slate-800",
-    modalSubLabel: "text-slate-500",
-    toggleBg: "bg-slate-300 peer-checked:bg-blue-500",
-    langBtnDefault: "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 shadow-sm",
-    langBtnActive: "bg-blue-50 border-blue-400 text-blue-700 shadow-[inset_0_0_5px_rgba(59,130,246,0.1)]",
-    modalConfirmBtn: "bg-blue-500 hover:bg-blue-600 text-white shadow-blue-500/20",
-    accentText: "text-blue-500",
-    optionsBtnIcon: "text-blue-500"
-  },
-  forest: {
-    name: "フォレスト",
-    icon: TreePine,
-    appBg: "bg-[#0b1b15] text-emerald-50 selection:bg-emerald-500/30",
-    headerBg: "border-emerald-900/50 bg-[#0f2920]/80",
-    headerText: "text-emerald-50",
-    headerMuted: "text-emerald-400",
-    headerIconBg: "from-emerald-600 to-teal-500 shadow-emerald-900/30 text-white",
-    headerButton: "text-emerald-500 hover:bg-[#113125] hover:text-rose-400",
-    settingsBtnDefault: "bg-[#0f2920]/50 text-emerald-500 border-transparent hover:bg-[#113125]",
-    settingsBtnActive: "bg-emerald-900/40 text-emerald-300 border-emerald-700/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]",
-    sysMessage: "bg-[#113125]/60 text-emerald-400/80 border-emerald-900/50",
-    messageMineBg: "bg-emerald-700 text-white shadow-emerald-900/20 hover:shadow-emerald-900/40 border-transparent",
-    messageTheirsBg: "bg-[#0f2920] text-emerald-50 shadow-black/20 border-emerald-900/60 hover:bg-[#113125]",
-    messageAvatarDefault: "bg-[#113125] text-emerald-500",
-    messageSenderName: "text-emerald-600",
-    editTextarea: "bg-black/20 border-emerald-500/50 text-emerald-50 focus:ring-emerald-500/30",
-    editBtnCancel: "hover:bg-emerald-900/50 text-white",
-    editBtnSave: "bg-emerald-100 text-emerald-800",
-    backTranslateBtn: "text-emerald-300 hover:text-emerald-200 bg-emerald-900/30 hover:bg-emerald-900/50",
-    timestampMine: "text-emerald-200",
-    timestampTheirs: "text-emerald-600/80",
-    inputWrapperBg: "border-emerald-900/40 bg-[#0f2920]/60",
-    inputArea: "border-emerald-900/50 bg-[#0b1b15] text-emerald-50 placeholder-emerald-700 focus:border-emerald-500 focus:bg-[#0b1b15] focus:ring-emerald-500/20",
-    sendBtn: "bg-emerald-600 text-white shadow-emerald-900/30 hover:bg-emerald-500 hover:shadow-emerald-900/40 ring-emerald-500/30",
-    modalOverlay: "bg-black/70",
-    modalBg: "bg-[#0b1b15] border-emerald-900/50",
-    modalSectionBg: "border-emerald-900/30 bg-[#07130e]",
-    modalLabel: "text-emerald-100",
-    modalSubLabel: "text-emerald-500",
-    toggleBg: "bg-[#113125] peer-checked:bg-emerald-600",
-    langBtnDefault: "bg-[#0f2920]/80 border-transparent text-emerald-400 hover:bg-[#113125] hover:text-emerald-200",
-    langBtnActive: "bg-emerald-900/40 border-emerald-600 text-emerald-300 shadow-[inset_0_0_10px_rgba(16,185,129,0.15)]",
-    modalConfirmBtn: "bg-emerald-700 hover:bg-emerald-600 text-white shadow-emerald-900/20",
-    accentText: "text-emerald-400",
-    optionsBtnIcon: "text-emerald-400"
-  },
-  cyber: {
-    name: "サイバー",
-    icon: Zap,
-    appBg: "bg-[#0a0515] text-pink-50 selection:bg-fuchsia-500/30 tracking-wide font-mono",
-    headerBg: "border-fuchsia-900/50 bg-[#150a25]/80",
-    headerText: "text-pink-50 font-bold",
-    headerMuted: "text-cyan-400",
-    headerIconBg: "from-fuchsia-600 to-cyan-500 shadow-[0_0_15px_rgba(192,38,211,0.5)] text-white",
-    headerButton: "text-fuchsia-400/70 hover:bg-[#1f0a35] hover:text-cyan-300",
-    settingsBtnDefault: "bg-[#1f0a35]/50 text-fuchsia-400/80 border-transparent hover:bg-[#2a0e4a]",
-    settingsBtnActive: "bg-cyan-900/20 text-cyan-300 border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.3)]",
-    sysMessage: "bg-[#1f0a35]/60 text-fuchsia-300/80 border-fuchsia-800/50",
-    messageMineBg: "bg-fuchsia-800 text-white shadow-[0_0_15px_rgba(192,38,211,0.4)] hover:shadow-[0_0_20px_rgba(192,38,211,0.6)] border-fuchsia-500/50",
-    messageTheirsBg: "bg-[#150a25] text-cyan-50 shadow-[0_0_10px_rgba(6,182,212,0.1)] border-cyan-900/60 hover:bg-[#1d0e30]",
-    messageAvatarDefault: "bg-[#1f0a35] text-cyan-500 border border-cyan-900",
-    messageSenderName: "text-fuchsia-500",
-    editTextarea: "bg-black/40 border-cyan-500/50 text-cyan-50 focus:ring-cyan-500/30",
-    editBtnCancel: "hover:bg-fuchsia-900/50 text-white",
-    editBtnSave: "bg-cyan-400 text-black font-extrabold",
-    backTranslateBtn: "text-cyan-300 hover:text-cyan-100 bg-cyan-900/30 hover:bg-cyan-800/40 border border-cyan-900/50",
-    timestampMine: "text-fuchsia-200",
-    timestampTheirs: "text-cyan-600",
-    inputWrapperBg: "border-fuchsia-900/40 bg-[#150a25]/60",
-    inputArea: "border-fuchsia-900/50 bg-[#0a0515] text-pink-50 placeholder-fuchsia-800 focus:border-cyan-500 focus:bg-[#0a0515] focus:ring-cyan-500/20",
-    sendBtn: "bg-cyan-500 text-black font-bold shadow-[0_0_15px_rgba(6,182,212,0.5)] hover:bg-cyan-400 hover:shadow-[0_0_20px_rgba(6,182,212,0.7)] ring-cyan-500/30",
-    modalOverlay: "bg-black/80 backdrop-blur-md",
-    modalBg: "bg-[#150a25] border-cyan-500/30 shadow-[0_0_30px_rgba(192,38,211,0.2)]",
-    modalSectionBg: "border-fuchsia-900/40 bg-[#0a0515]/80",
-    modalLabel: "text-fuchsia-200",
-    modalSubLabel: "text-fuchsia-500/80 text-xs",
-    toggleBg: "bg-[#1f0a35] peer-checked:bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]",
-    langBtnDefault: "bg-[#150a25] border-fuchsia-900/30 text-fuchsia-400 hover:bg-[#1f0a35] hover:text-cyan-300",
-    langBtnActive: "bg-cyan-900/30 border-cyan-400 text-cyan-200 shadow-[0_0_15px_rgba(6,182,212,0.4)]",
-    modalConfirmBtn: "bg-fuchsia-700 hover:bg-fuchsia-600 text-white shadow-[0_0_20px_rgba(192,38,211,0.5)] font-bold tracking-widest",
-    accentText: "text-cyan-400",
-    optionsBtnIcon: "text-cyan-400 animate-pulse"
-  }
-};
-
-type ThemeKey = keyof typeof THEMES;
+import { THEMES, ThemeKey } from "@/lib/constants";
+import { OptionsModal } from "./OptionsModal";
 
 export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onLeave: () => void }) {
   const { messages, sendMessage, editMessage } = useChat();
@@ -520,157 +359,23 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
         </form>
       </div>
 
-      {/* 総合オプションモーダル */}
-      {isOptionModalOpen && (
-        <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200 ${t.modalOverlay}`}>
-          <div className={`w-full max-w-sm rounded-2xl border p-6 shadow-2xl animate-in zoom-in-95 duration-200 ${t.modalBg}`}>
-            <div className="flex items-center justify-between mb-6">
-              <h3 className={`text-lg font-bold flex items-center gap-2 ${t.headerText}`}>
-                <Settings className={`h-5 w-5 ${t.accentText}`} />
-                総合オプション
-              </h3>
-              <button onClick={() => setIsOptionModalOpen(false)} className={`transition-colors ${t.headerButton}`}>
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            
-            <div className="space-y-6">
-              
-              {/* セクション1: テーマ変更 */}
-              <div>
-                <h4 className={`text-xs font-bold uppercase tracking-wider mb-3 ${t.modalSubLabel}`}>🎨 見た目のテーマ</h4>
-                <div className="grid grid-cols-2 gap-3">
-                  {(Object.keys(THEMES) as ThemeKey[]).map(themeKey => {
-                    const ThemeIcon = THEMES[themeKey].icon;
-                    return (
-                      <button
-                        key={themeKey}
-                        onClick={() => setCurrentTheme(themeKey)}
-                        className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border transition-all ${
-                          currentTheme === themeKey
-                            ? t.langBtnActive
-                            : t.langBtnDefault
-                        }`}
-                      >
-                        <ThemeIcon className={`h-5 w-5 ${currentTheme === themeKey ? t.accentText : ""}`} />
-                        <span className="text-sm font-semibold">{THEMES[themeKey].name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* セクション2: すれ違い機能 */}
-              <div>
-                <h4 className={`text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2 ${t.modalSubLabel}`}>
-                 <Globe className="h-3 w-3" /> すれ違い翻訳機能
-                </h4>
-                
-                <div className={`flex items-center justify-between p-3 rounded-lg border mb-3 ${t.modalSectionBg}`}>
-                  <span className={`text-sm font-medium ${t.modalLabel}`}>機能を有効にする</span>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" checked={isTranslationEnabled} onChange={(e) => setIsTranslationEnabled(e.target.checked)} />
-                    <div className={`w-11 h-6 peer-focus:outline-none rounded-full peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${t.toggleBg}`}></div>
-                  </label>
-                </div>
-
-                <div className={`space-y-2 transition-all duration-300 ${isTranslationEnabled ? "opacity-100 h-auto" : "opacity-50 pointer-events-none grayscale"}`}>
-                  <label className={`block text-xs font-medium ${t.modalSubLabel}`}>翻訳先の言語（すれ違い先）</label>
-                  <div className="grid grid-cols-2 gap-2 max-h-[30vh] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-zinc-500/50">
-                    {LANGUAGES.map(lang => (
-                      <button
-                        key={lang.code}
-                        onClick={() => setTargetLanguage(lang.code)}
-                        className={`p-2 rounded-lg text-sm transition-all border ${
-                          targetLanguage === lang.code 
-                            ? t.langBtnActive
-                            : t.langBtnDefault
-                        }`}
-                      >
-                        {lang.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* セクション3: 数字カオス変換 */}
-              <div>
-                <h4 className={`text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2 ${t.modalSubLabel}`}>
-                 <Hash className="h-3 w-3" /> 数字カオス変換機能
-                </h4>
-                
-                <div className={`flex items-center justify-between p-3 rounded-lg border mb-3 ${t.modalSectionBg}`}>
-                  <span className={`text-sm font-medium ${t.modalLabel}`}>機能を有効にする</span>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" checked={isNumberConversionEnabled} onChange={(e) => setIsNumberConversionEnabled(e.target.checked)} />
-                    <div className={`w-11 h-6 peer-focus:outline-none rounded-full peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${t.toggleBg}`}></div>
-                  </label>
-                </div>
-
-                <div className={`space-y-4 transition-all duration-300 ${isNumberConversionEnabled ? "opacity-100 h-auto" : "opacity-50 pointer-events-none grayscale"}`}>
-                  
-                  <div>
-                    <label className={`block text-xs font-medium mb-1.5 ${t.modalSubLabel}`}>抽出する進数（From）</label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {[
-                        { base: 2, label: "2進数" },
-                        { base: 8, label: "8進数" },
-                        { base: 10, label: "10進数" },
-                        { base: 16, label: "16進数" }
-                      ].map(opt => (
-                        <button
-                          key={`from-${opt.base}`}
-                          onClick={() => setFromBase(opt.base)}
-                          className={`p-2 rounded-lg text-xs md:text-sm transition-all border whitespace-nowrap ${
-                            fromBase === opt.base 
-                              ? t.langBtnActive
-                              : t.langBtnDefault
-                          }`}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className={`block text-xs font-medium mb-1.5 ${t.modalSubLabel}`}>変換先の進数（To）</label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {[
-                        { base: 2, label: "2進数" },
-                        { base: 8, label: "8進数" },
-                        { base: 10, label: "10進数" },
-                        { base: 16, label: "16進数" }
-                      ].map(opt => (
-                        <button
-                          key={`to-${opt.base}`}
-                          onClick={() => setToBase(opt.base)}
-                          className={`p-2 rounded-lg text-xs md:text-sm transition-all border whitespace-nowrap ${
-                            toBase === opt.base 
-                              ? t.langBtnActive
-                              : t.langBtnDefault
-                          }`}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-
-              <button 
-                onClick={() => setIsOptionModalOpen(false)}
-                className={`w-full mt-2 py-2.5 rounded-lg transition-all active:scale-95 ${t.modalConfirmBtn}`}
-              >
-                完了して閉じる
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 総合オプションモーダル（別ファイルへ分離） */}
+      <OptionsModal 
+        isOpen={isOptionModalOpen}
+        onClose={() => setIsOptionModalOpen(false)}
+        currentTheme={currentTheme}
+        setCurrentTheme={setCurrentTheme}
+        isTranslationEnabled={isTranslationEnabled}
+        setIsTranslationEnabled={setIsTranslationEnabled}
+        targetLanguage={targetLanguage}
+        setTargetLanguage={setTargetLanguage}
+        isNumberConversionEnabled={isNumberConversionEnabled}
+        setIsNumberConversionEnabled={setIsNumberConversionEnabled}
+        fromBase={fromBase}
+        setFromBase={setFromBase}
+        toBase={toBase}
+        setToBase={setToBase}
+      />
     </div>
   );
 }
