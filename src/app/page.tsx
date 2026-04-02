@@ -1,40 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { NameInput } from "@/components/NameInput";
+import { LoginScreen } from "@/components/LoginScreen";
 import { ChatInterface } from "@/components/ChatInterface";
+import { useAuth } from "@/lib/useAuth";
 
 export default function Home() {
-  const [userName, setUserName] = useState<string | null>(null);
-  const [isMounted, setIsMounted] = useState(false);
+  const { user, loading, signInWithGoogle, signOut } = useAuth();
 
-  // 初回レンダリング後にlocalStorageから名前を復元する
-  useEffect(() => {
-    const saved = localStorage.getItem("chat_username");
-    if (saved) {
-      setUserName(saved);
-    }
-    setIsMounted(true);
-  }, []);
-
-  // ハイドレーションエラーを防止するため、マウントが終わるまでは何も表示しない
-  if (!isMounted) return <div className="min-h-screen bg-zinc-950"></div>;
-
-  const handleJoin = (name: string) => {
-    localStorage.setItem("chat_username", name);
-    setUserName(name);
-  };
-
-  const handleLeave = () => {
-    localStorage.removeItem("chat_username");
-    setUserName(null);
-  };
-
-  if (!userName) {
-    return <NameInput onJoin={handleJoin} />;
+  // マウント中または認証状態の確認中はローディング画面を表示
+  if (loading) {
+    return (
+      <div className="min-h-[100dvh] flex items-center justify-center bg-zinc-950 font-sans text-white">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-zinc-800 border-t-indigo-500"></div>
+          <p className="text-sm text-zinc-500">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
-  // チャット画面を表示
-  return <ChatInterface currentUser={userName} onLeave={handleLeave} />;
+  // 未ログイン時はログイン画面（Google）を表示
+  if (!user) {
+    return <LoginScreen onLogin={signInWithGoogle} />;
+  }
+
+  // ログイン済みならチャット画面を表示して User オブジェクトを渡す
+  return <ChatInterface currentUser={user} onLeave={signOut} />;
 }
 

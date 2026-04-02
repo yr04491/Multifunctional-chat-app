@@ -5,7 +5,9 @@ import { db } from "./firebase";
 export type Message = {
   id: string;
   text: string;
-  sender: string;
+  sender: string;       // 表示名
+  uid: string;          // アカウント固有ID
+  photoURL: string | null;  // アイコンURL
   timestamp: Date | null;
   isEdited: boolean;
 };
@@ -24,8 +26,9 @@ export function useChat() {
         return {
           id: d.id,
           text: data.text,
-          sender: data.sender,
-          // nullが来る可能性をハンドリング (送信直後など)
+          sender: data.sender || "Unknown",
+          uid: data.uid || "",
+          photoURL: data.photoURL || null,
           timestamp: data.timestamp ? (data.timestamp as Timestamp).toDate() : new Date(),
           isEdited: data.isEdited || false,
         };
@@ -37,11 +40,13 @@ export function useChat() {
   }, []);
 
   // 新規メッセージの送信
-  const sendMessage = async (text: string, sender: string) => {
+  const sendMessage = async (text: string, uid: string, displayName: string, photoURL: string | null) => {
     try {
       await addDoc(collection(db, "messages"), {
         text,
-        sender,
+        sender: displayName,
+        uid,
+        photoURL,
         timestamp: serverTimestamp(),
         isEdited: false,
       });

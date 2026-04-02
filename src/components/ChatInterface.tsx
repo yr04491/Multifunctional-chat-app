@@ -3,8 +3,9 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Edit2, Check, X, LogOut } from "lucide-react";
 import { useChat, Message } from "@/lib/useChat";
+import type { User } from "firebase/auth";
 
-export function ChatInterface({ currentUser, onLeave }: { currentUser: string; onLeave: () => void }) {
+export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onLeave: () => void }) {
   const { messages, sendMessage, editMessage } = useChat();
   const [newMessage, setNewMessage] = useState("");
   
@@ -23,7 +24,7 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: string; o
     e.preventDefault();
     if (!newMessage.trim()) return;
 
-    await sendMessage(newMessage.trim(), currentUser);
+    await sendMessage(newMessage.trim(), currentUser.uid, currentUser.displayName || "User", currentUser.photoURL);
     setNewMessage("");
   };
 
@@ -46,11 +47,16 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: string; o
       {/* ヘッダーエリア */}
       <header className="flex h-16 shrink-0 items-center justify-between border-b border-zinc-800 bg-zinc-900/60 px-4 sm:px-6 backdrop-blur-md sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 font-bold text-white shadow-lg shadow-indigo-600/20">
-            {currentUser.charAt(0).toUpperCase()}
-          </div>
+          {currentUser.photoURL ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={currentUser.photoURL} alt="Profile" className="h-10 w-10 rounded-full border border-zinc-700 object-cover shadow-lg" />
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 font-bold text-white shadow-lg shadow-indigo-600/20">
+              {(currentUser.displayName || "U").charAt(0).toUpperCase()}
+            </div>
+          )}
           <div>
-            <span className="block font-semibold text-zinc-100 leading-tight">{currentUser}</span>
+            <span className="block font-semibold text-zinc-100 leading-tight">{currentUser.displayName || "User"}</span>
             <span className="block text-xs text-indigo-400">Online</span>
           </div>
         </div>
@@ -66,7 +72,7 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: string; o
       {/* メッセージ一覧エリア */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 sm:space-y-8 scroll-smooth scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
         {messages.map((msg) => {
-          const isMine = msg.sender === currentUser;
+          const isMine = msg.uid === currentUser.uid;
           const isSystem = msg.sender === "System";
           const isEditingThis = editingId === msg.id;
 
@@ -86,11 +92,21 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: string; o
               key={msg.id}
               className={`flex flex-col group/message animate-in fade-in slide-in-from-bottom-2 duration-300 ${isMine ? "items-end" : "items-start"}`}
             >
-              {/* 送信者名 */}
+              {/* アイコンと名前（相手の場合） */}
               {!isMine && (
-                <span className="mb-1.5 ml-2 text-xs font-semibold tracking-wide text-zinc-500">
-                  {msg.sender}
-                </span>
+                <div className="mb-1.5 ml-1 flex items-end gap-2">
+                  {msg.photoURL ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={msg.photoURL} alt={msg.sender} className="h-6 w-6 rounded-full object-cover border border-zinc-800" />
+                  ) : (
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-800 text-[10px] font-bold text-zinc-400">
+                      {msg.sender.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <span className="text-xs font-semibold tracking-wide text-zinc-500">
+                    {msg.sender}
+                  </span>
+                </div>
               )}
 
               <div className={`relative max-w-[85%] sm:max-w-[70%] flex items-center gap-2 ${isMine ? "flex-row-reverse" : "flex-row"}`}>
