@@ -4,12 +4,16 @@ import { db } from "./firebase";
 
 export type Message = {
   id: string;
-  text: string;
+  originalText: string;
+  translatedText: string | null;
+  text: string; // Maintain for backward compatibility for older messages without originalText
   sender: string;       // 表示名
   uid: string;          // アカウント固有ID
   photoURL: string | null;  // アイコンURL
   timestamp: Date | null;
   isEdited: boolean;
+  isTranslationEnabled: boolean;
+  translationLanguage?: string;
 };
 
 export function useChat() {
@@ -25,12 +29,16 @@ export function useChat() {
         const data = d.data();
         return {
           id: d.id,
-          text: data.text,
+          text: data.text || "",
+          originalText: data.originalText || data.text || "",
+          translatedText: data.translatedText || null,
           sender: data.sender || "Unknown",
           uid: data.uid || "",
           photoURL: data.photoURL || null,
           timestamp: data.timestamp ? (data.timestamp as Timestamp).toDate() : new Date(),
           isEdited: data.isEdited || false,
+          isTranslationEnabled: data.isTranslationEnabled || false,
+          translationLanguage: data.translationLanguage || "en",
         };
       });
       setMessages(msgs);
@@ -40,15 +48,28 @@ export function useChat() {
   }, []);
 
   // 新規メッセージの送信
-  const sendMessage = async (text: string, uid: string, displayName: string, photoURL: string | null) => {
+  const sendMessage = async (
+    text: string, 
+    uid: string, 
+    displayName: string, 
+    photoURL: string | null, 
+    originalText: string, 
+    translatedText: string | null, 
+    isTranslationEnabled: boolean,
+    translationLanguage: string
+  ) => {
     try {
       await addDoc(collection(db, "messages"), {
-        text,
+        text, // Used as fallback
+        originalText,
+        translatedText,
         sender: displayName,
         uid,
         photoURL,
         timestamp: serverTimestamp(),
         isEdited: false,
+        isTranslationEnabled,
+        translationLanguage,
       });
     } catch (e) {
       console.error("メッセージ送信エラー:", e);
