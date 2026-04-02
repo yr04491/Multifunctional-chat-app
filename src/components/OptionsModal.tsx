@@ -1,5 +1,19 @@
-import { Settings, X, Globe, Hash } from "lucide-react";
+import { Settings, X, Globe, Hash, Clock } from "lucide-react";
 import { THEMES, LANGUAGES, ThemeKey } from "@/lib/constants";
+
+const DELAY_OPTIONS = [
+  { value: 0, label: "なし" },
+  { value: 1, label: "1分" },
+  { value: 5, label: "5分" },
+  { value: 10, label: "10分" },
+  { value: 15, label: "15分" },
+  { value: 30, label: "30分" },
+  { value: 45, label: "45分" },
+  { value: 60, label: "1時間" },
+  { value: 120, label: "2時間" },
+  { value: 180, label: "3時間" },
+  { value: -1, label: "🎲 ランダム" },
+];
 
 type OptionsModalProps = {
   isOpen: boolean;
@@ -19,6 +33,11 @@ type OptionsModalProps = {
   setFromBase: (base: number) => void;
   toBase: number;
   setToBase: (base: number) => void;
+  // Delay
+  isDelayEnabled: boolean;
+  setIsDelayEnabled: (enabled: boolean) => void;
+  delayMinutes: number;
+  setDelayMinutes: (minutes: number) => void;
 };
 
 export function OptionsModal({
@@ -35,7 +54,11 @@ export function OptionsModal({
   fromBase,
   setFromBase,
   toBase,
-  setToBase
+  setToBase,
+  isDelayEnabled,
+  setIsDelayEnabled,
+  delayMinutes,
+  setDelayMinutes,
 }: OptionsModalProps) {
   if (!isOpen) return null;
 
@@ -178,6 +201,40 @@ export function OptionsModal({
                 </div>
               </div>
 
+            </div>
+          </div>
+
+          {/* セクション4: 時空カオス（遅延受信） */}
+          <div>
+            <h4 className={`text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2 ${t.modalSubLabel}`}>
+             <Clock className="h-3 w-3" /> 時空カオス（遅延受信）機能
+            </h4>
+            
+            <div className={`flex items-center justify-between p-3 rounded-lg border mb-3 ${t.modalSectionBg}`}>
+              <span className={`text-sm font-medium ${t.modalLabel}`}>機能を有効にする</span>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" className="sr-only peer" checked={isDelayEnabled} onChange={(e) => setIsDelayEnabled(e.target.checked)} />
+                <div className={`w-11 h-6 peer-focus:outline-none rounded-full peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${t.toggleBg}`}></div>
+              </label>
+            </div>
+
+            <div className={`transition-all duration-300 ${isDelayEnabled ? "opacity-100" : "opacity-50 pointer-events-none grayscale"}`}>
+              <label className={`block text-xs font-medium mb-1.5 ${t.modalSubLabel}`}>遅延時間（相手に届くまで）</label>
+              <div className="grid grid-cols-3 gap-2">
+                {DELAY_OPTIONS.map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setDelayMinutes(opt.value)}
+                    className={`p-2 rounded-lg text-xs transition-all border whitespace-nowrap ${
+                      delayMinutes === opt.value
+                        ? t.langBtnActive
+                        : t.langBtnDefault
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 

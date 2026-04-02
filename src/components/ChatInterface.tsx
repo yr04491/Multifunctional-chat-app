@@ -25,6 +25,17 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
   const [isNumberConversionEnabled, setIsNumberConversionEnabled] = useState(false);
   const [fromBase, setFromBase] = useState(10);
   const [toBase, setToBase] = useState(2);
+
+  // 時空カオス（遅延受信）機能
+  const [isDelayEnabled, setIsDelayEnabled] = useState(false);
+  const [delayMinutes, setDelayMinutes] = useState(0);
+  const [now, setNow] = useState(() => new Date());
+
+  // 1秒ごとに現在時刻を更新（遅延メッセージの解禁チェック用）
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
   
   const [isTranslating, setIsTranslating] = useState(false);
   const [backTranslations, setBackTranslations] = useState<Record<string, string>>({});
@@ -87,7 +98,8 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
       isTranslationEnabled,
       targetLanguage,
       isNumberConversionEnabled,
-      toBase
+      toBase,
+      isDelayEnabled ? (delayMinutes === -1 ? Math.floor(Math.random() * 180) + 1 : delayMinutes) : 0
     );
     setNewMessage("");
   };
@@ -187,7 +199,26 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
 
       {/* メッセージ一覧エリア */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 sm:space-y-8 scroll-smooth scrollbar-thin scrollbar-thumb-zinc-700/50 scrollbar-track-transparent">
-        {messages.map((msg) => {
+        {(() => {
+          // 送信者のnfilteredMessages：全メッセージをsentAt順（Firestoreの順）
+          // 受信者のnfilteredMessages：revealAtを過ぎまで非表示、表示タイミングはrevealAtベースでソート
+          const displayMessages = messages
+            .filter(msg => {
+              const isMine = msg.uid === currentUser.uid;
+              if (isMine) return true; // 自分のメッセージは常に表示
+              // 相手のメッセージ：revealAtが現在時刻を過ぎたものだけ表示
+              return msg.revealAt ? msg.revealAt <= now : true;
+            })
+            .map(msg => ({
+              ...msg,
+              // 自分のメッセージ：sentAtで並べる、相手のメッセージ：revealAtで並べる
+              sortKey: msg.uid === currentUser.uid
+                ? (msg.timestamp?.getTime() ?? 0)
+                : (msg.revealAt?.getTime() ?? msg.timestamp?.getTime() ?? 0)
+            }))
+            .sort((a, b) => a.sortKey - b.sortKey);
+
+          return displayMessages.map((msg) => {
           const isMine = msg.uid === currentUser.uid;
           const isSystem = msg.sender === "System";
           const isEditingThis = editingId === msg.id;
@@ -321,7 +352,8 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
               </div>
             </div>
           );
-        })}
+        });
+        })()}
         <div ref={messagesEndRef} className="h-2" />
       </div>
 
@@ -375,6 +407,10 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
         setFromBase={setFromBase}
         toBase={toBase}
         setToBase={setToBase}
+        isDelayEnabled={isDelayEnabled}
+        setIsDelayEnabled={setIsDelayEnabled}
+        delayMinutes={delayMinutes}
+        setDelayMinutes={setDelayMinutes}
       />
     </div>
   );

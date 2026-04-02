@@ -10,7 +10,9 @@ export type Message = {
   sender: string;       // 表示名
   uid: string;          // アカウント固有ID
   photoURL: string | null;  // アイコンURL
-  timestamp: Date | null;
+  timestamp: Date | null;  // 送信時刻（sentAt）
+  revealAt: Date | null;   // 表示解禁時刻（timestamp + delay）
+  delayMinutes: number;    // 遅延分数（0=即時）
   isEdited: boolean;
   isTranslationEnabled: boolean;
   translationLanguage?: string;
@@ -29,6 +31,11 @@ export function useChat() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs: Message[] = snapshot.docs.map((d) => {
         const data = d.data();
+        const sentAt = data.timestamp ? (data.timestamp as Timestamp).toDate() : new Date();
+        const delayMinutes: number = data.delayMinutes || 0;
+        const revealAt: Date = data.revealAt
+          ? (data.revealAt as Timestamp).toDate()
+          : sentAt;
         return {
           id: d.id,
           text: data.text || "",
@@ -37,7 +44,9 @@ export function useChat() {
           sender: data.sender || "Unknown",
           uid: data.uid || "",
           photoURL: data.photoURL || null,
-          timestamp: data.timestamp ? (data.timestamp as Timestamp).toDate() : new Date(),
+          timestamp: sentAt,
+          revealAt,
+          delayMinutes,
           isEdited: data.isEdited || false,
           isTranslationEnabled: data.isTranslationEnabled || false,
           translationLanguage: data.translationLanguage || "en",
@@ -62,9 +71,14 @@ export function useChat() {
     isTranslationEnabled: boolean,
     translationLanguage: string,
     isNumberConversionEnabled: boolean,
-    numberBase: number
+    numberBase: number,
+    delayMinutes: number
   ) => {
     try {
+      // 遅延時間を計算してrevealAtをセット
+      const now = new Date();
+      const revealAt = new Date(now.getTime() + delayMinutes * 60 * 1000);
+      
       await addDoc(collection(db, "messages"), {
         text, // Used as fallback
         originalText,
@@ -73,6 +87,8 @@ export function useChat() {
         uid,
         photoURL,
         timestamp: serverTimestamp(),
+        revealAt: Timestamp.fromDate(revealAt),
+        delayMinutes,
         isEdited: false,
         isTranslationEnabled,
         translationLanguage,
