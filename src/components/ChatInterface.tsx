@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Edit2, Check, X, LogOut, Globe, Languages, Loader2, Settings, Monitor, Moon, Sun, TreePine, Zap } from "lucide-react";
+import { Send, Edit2, Check, X, LogOut, Globe, Languages, Loader2, Settings, Monitor, Moon, Sun, TreePine, Zap, Hash } from "lucide-react";
 import { useChat, Message } from "@/lib/useChat";
 import type { User } from "firebase/auth";
 import { translateText } from "@/app/actions/translate";
@@ -183,6 +183,10 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
   const [isTranslationEnabled, setIsTranslationEnabled] = useState(false);
   const [targetLanguage, setTargetLanguage] = useState("en");
   
+  const [isNumberConversionEnabled, setIsNumberConversionEnabled] = useState(false);
+  const [fromBase, setFromBase] = useState(10);
+  const [toBase, setToBase] = useState(2);
+  
   const [isTranslating, setIsTranslating] = useState(false);
   const [backTranslations, setBackTranslations] = useState<Record<string, string>>({});
   const [translatingId, setTranslatingId] = useState<string | null>(null);
@@ -202,16 +206,36 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
     const textToSend = newMessage.trim();
     if (!textToSend) return;
 
-    let translated = null;
-    if (isTranslationEnabled) {
-      setIsTranslating(true);
-      try {
-        translated = await translateText(textToSend, `ja|${targetLanguage}`);
-      } catch (err) {
-        console.error("Translation failed", err);
-      } finally {
-        setIsTranslating(false);
+    let processedTranslated = null;
+
+    if (isTranslationEnabled || isNumberConversionEnabled) {
+      let currentText = textToSend;
+
+      // 1. Language translation
+      if (isTranslationEnabled) {
+        setIsTranslating(true);
+        try {
+          currentText = await translateText(currentText, `ja|${targetLanguage}`);
+        } catch (err) {
+          console.error("Translation failed", err);
+        } finally {
+          setIsTranslating(false);
+        }
       }
+
+      // 2. Number Conversion
+      if (isNumberConversionEnabled) {
+        let regex = /\d+/g;
+        if (fromBase === 2) regex = /[01]+/g;
+        if (fromBase === 8) regex = /[0-7]+/g;
+        if (fromBase === 16) regex = /[0-9A-Fa-f]+/g;
+
+        currentText = currentText.replace(regex, (match) => {
+          return parseInt(match, fromBase).toString(toBase).toUpperCase();
+        });
+      }
+
+      processedTranslated = currentText;
     }
 
     await sendMessage(
@@ -220,18 +244,46 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
       currentUser.displayName || "User", 
       currentUser.photoURL,
       textToSend,
-      translated,
+      processedTranslated,
       isTranslationEnabled,
-      targetLanguage
+      targetLanguage,
+      isNumberConversionEnabled,
+      toBase
     );
     setNewMessage("");
   };
 
-  const handleBackTranslate = async (msgId: string, textToTranslate: string, lang: string) => {
+  const handleFullDecode = async (
+    msgId: string, 
+    textToDecode: string, 
+    isTransEnabled: boolean, 
+    lang: string, 
+    isNumConvEnabled: boolean, 
+    base?: number
+  ) => {
     setTranslatingId(msgId);
     try {
-      const result = await translateText(textToTranslate, `${lang}|ja`);
-      setBackTranslations(prev => ({ ...prev, [msgId]: result }));
+      let currentText = textToDecode;
+
+      // 1. Revert Numbers
+      if (isNumConvEnabled && base) {
+        let regex = /\d+/g;
+        if (base === 2) regex = /[01]+/g;
+        if (base === 8) regex = /[0-7]+/g;
+        if (base === 16) regex = /[0-9A-F]+/g;
+
+        currentText = currentText.replace(regex, (match) => {
+          const revert = parseInt(match, base).toString(10);
+          return isNaN(Number(revert)) ? match : revert; 
+        });
+      }
+
+      // 2. Revert Language Translation
+      if (isTransEnabled) {
+        currentText = await translateText(currentText, `${lang}|ja`);
+      }
+
+      setBackTranslations(prev => ({ ...prev, [msgId]: currentText }));
     } catch (err) {
       console.error(err);
     } finally {
@@ -381,21 +433,28 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
                     </div>
                   ) : (
                     <>
-                      <p className={`leading-relaxed break-words whitespace-pre-wrap text-sm md:text-base ${isMine ? t.messageMineText : t.messageTheirsText}`}>
-                        {isMine ? msg.originalText : (msg.isTranslationEnabled && msg.translatedText ? msg.translatedText : msg.originalText)}
+                      <p className={`leading-relaxed break-words whitespace-pre-wrap text-sm md:text-base ${isMine ? "" : ""}`}>
+                        {isMine ? msg.originalText : ((msg.isTranslationEnabled || msg.isNumberConversionEnabled) && msg.translatedText ? msg.translatedText : msg.originalText)}
                       </p>
                       
                       {/* 受信者側の再翻訳UI */}
-                      {!isMine && msg.isTranslationEnabled && msg.translatedText && (
+                      {!isMine && (msg.isTranslationEnabled || msg.isNumberConversionEnabled) && msg.translatedText && (
                         <div className="mt-3 border-t border-black/10 pt-2 text-left">
                           {backTranslations[msg.id] ? (
                             <div className={`rounded-lg p-2.5 text-sm italic shadow-inner ${t.modalSectionBg}`}>
-                              <span className={`text-xs block mb-1 not-italic font-bold ${t.accentText}`}>✨ 再翻訳結果 ✨</span>
-                              <span className={t.messageTheirsText}>{backTranslations[msg.id]}</span>
+                              <span className={`text-xs block mb-1 not-italic font-bold ${t.accentText}`}>✨ 解読結果 ✨</span>
+                              <span className="opacity-90">{backTranslations[msg.id]}</span>
                             </div>
                           ) : (
                             <button 
-                              onClick={() => handleBackTranslate(msg.id, msg.translatedText!, msg.translationLanguage || "en")}
+                              onClick={() => handleFullDecode(
+                                msg.id, 
+                                msg.translatedText!, 
+                                msg.isTranslationEnabled, 
+                                msg.translationLanguage || "en", 
+                                msg.isNumberConversionEnabled, 
+                                msg.numberBase
+                              )}
                               disabled={translatingId === msg.id}
                               className={`flex items-center gap-1.5 text-xs transition-colors px-2.5 py-1.5 rounded-md ${t.backTranslateBtn}`}
                             >
@@ -404,7 +463,7 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
                               ) : (
                                 <Globe className="h-3 w-3" />
                               )}
-                              日本語に翻訳🔍
+                              元のメッセージに復号する🔍
                             </button>
                           )}
                         </div>
@@ -532,6 +591,73 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
                       </button>
                     ))}
                   </div>
+                </div>
+              </div>
+
+              {/* セクション3: 数字カオス変換 */}
+              <div>
+                <h4 className={`text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2 ${t.modalSubLabel}`}>
+                 <Hash className="h-3 w-3" /> 数字カオス変換機能
+                </h4>
+                
+                <div className={`flex items-center justify-between p-3 rounded-lg border mb-3 ${t.modalSectionBg}`}>
+                  <span className={`text-sm font-medium ${t.modalLabel}`}>機能を有効にする</span>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" className="sr-only peer" checked={isNumberConversionEnabled} onChange={(e) => setIsNumberConversionEnabled(e.target.checked)} />
+                    <div className={`w-11 h-6 peer-focus:outline-none rounded-full peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${t.toggleBg}`}></div>
+                  </label>
+                </div>
+
+                <div className={`space-y-4 transition-all duration-300 ${isNumberConversionEnabled ? "opacity-100 h-auto" : "opacity-50 pointer-events-none grayscale"}`}>
+                  
+                  <div>
+                    <label className={`block text-xs font-medium mb-1.5 ${t.modalSubLabel}`}>抽出する進数（From）</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { base: 2, label: "2進数" },
+                        { base: 8, label: "8進数" },
+                        { base: 10, label: "10進数" },
+                        { base: 16, label: "16進数" }
+                      ].map(opt => (
+                        <button
+                          key={`from-${opt.base}`}
+                          onClick={() => setFromBase(opt.base)}
+                          className={`p-2 rounded-lg text-xs md:text-sm transition-all border whitespace-nowrap ${
+                            fromBase === opt.base 
+                              ? t.langBtnActive
+                              : t.langBtnDefault
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className={`block text-xs font-medium mb-1.5 ${t.modalSubLabel}`}>変換先の進数（To）</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { base: 2, label: "2進数" },
+                        { base: 8, label: "8進数" },
+                        { base: 10, label: "10進数" },
+                        { base: 16, label: "16進数" }
+                      ].map(opt => (
+                        <button
+                          key={`to-${opt.base}`}
+                          onClick={() => setToBase(opt.base)}
+                          className={`p-2 rounded-lg text-xs md:text-sm transition-all border whitespace-nowrap ${
+                            toBase === opt.base 
+                              ? t.langBtnActive
+                              : t.langBtnDefault
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                 </div>
               </div>
 

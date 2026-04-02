@@ -14,6 +14,8 @@ export type Message = {
   isEdited: boolean;
   isTranslationEnabled: boolean;
   translationLanguage?: string;
+  isNumberConversionEnabled: boolean;
+  numberBase?: number;
 };
 
 export function useChat() {
@@ -39,6 +41,8 @@ export function useChat() {
           isEdited: data.isEdited || false,
           isTranslationEnabled: data.isTranslationEnabled || false,
           translationLanguage: data.translationLanguage || "en",
+          isNumberConversionEnabled: data.isNumberConversionEnabled || false,
+          numberBase: data.numberBase || 2,
         };
       });
       setMessages(msgs);
@@ -56,7 +60,9 @@ export function useChat() {
     originalText: string, 
     translatedText: string | null, 
     isTranslationEnabled: boolean,
-    translationLanguage: string
+    translationLanguage: string,
+    isNumberConversionEnabled: boolean,
+    numberBase: number
   ) => {
     try {
       await addDoc(collection(db, "messages"), {
@@ -70,6 +76,8 @@ export function useChat() {
         isEdited: false,
         isTranslationEnabled,
         translationLanguage,
+        isNumberConversionEnabled,
+        numberBase,
       });
     } catch (e) {
       console.error("メッセージ送信エラー:", e);
