@@ -106,7 +106,11 @@ export function useChat() {
       const msgRef = doc(db, "messages", id);
       await updateDoc(msgRef, {
         text: newText,
+        originalText: newText,
+        translatedText: null,
         isEdited: true,
+        isTranslationEnabled: false,
+        isNumberConversionEnabled: false,
       });
     } catch (e) {
       console.error("メッセージ編集エラー:", e);

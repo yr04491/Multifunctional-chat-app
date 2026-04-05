@@ -1,4 +1,5 @@
-import { Settings, X, Globe, Hash, Clock } from "lucide-react";
+import { useState } from "react";
+import { Settings, X, Globe, Hash, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import { THEMES, LANGUAGES, ThemeKey } from "@/lib/constants";
 
 const DELAY_OPTIONS = [
@@ -60,14 +61,20 @@ export function OptionsModal({
   delayMinutes,
   setDelayMinutes,
 }: OptionsModalProps) {
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
+
   if (!isOpen) return null;
 
   const t = THEMES[currentTheme];
 
+  const toggleSection = (section: string) => {
+    setExpandedSection(prev => prev === section ? null : section);
+  };
+
   return (
     <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200 ${t.modalOverlay}`}>
-      <div className={`w-full max-w-sm rounded-2xl border p-6 shadow-2xl animate-in zoom-in-95 duration-200 ${t.modalBg}`}>
-        <div className="flex items-center justify-between mb-6">
+      <div className={`w-full max-w-sm rounded-2xl border p-6 shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] ${t.modalBg}`}>
+        <div className="flex items-center justify-between mb-6 shrink-0">
           <h3 className={`text-lg font-bold flex items-center gap-2 ${t.headerText}`}>
             <Settings className={`h-5 w-5 ${t.accentText}`} />
             総合オプション
@@ -77,170 +84,214 @@ export function OptionsModal({
           </button>
         </div>
         
-        <div className="space-y-6">
+        <div className="space-y-3 overflow-y-auto pr-2 pb-2 scrollbar-thin scrollbar-thumb-zinc-500/50 flex-1">
           
           {/* セクション1: テーマ変更 */}
-          <div>
-            <h4 className={`text-xs font-bold uppercase tracking-wider mb-3 ${t.modalSubLabel}`}>🎨 見た目のテーマ</h4>
-            <div className="grid grid-cols-2 gap-3">
-              {(Object.keys(THEMES) as ThemeKey[]).map(themeKey => {
-                const ThemeIcon = THEMES[themeKey].icon;
-                return (
-                  <button
-                    key={themeKey}
-                    onClick={() => setCurrentTheme(themeKey)}
-                    className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border transition-all ${
-                      currentTheme === themeKey
-                        ? t.langBtnActive
-                        : t.langBtnDefault
-                    }`}
-                  >
-                    <ThemeIcon className={`h-5 w-5 ${currentTheme === themeKey ? t.accentText : ""}`} />
-                    <span className="text-sm font-semibold">{THEMES[themeKey].name}</span>
-                  </button>
-                );
-              })}
-            </div>
+          <div className="border rounded-xl overflow-hidden transition-all duration-200">
+            <button 
+              onClick={() => toggleSection('theme')}
+              className={`w-full flex items-center justify-between p-3 transition-colors ${t.modalSectionBg}`}
+            >
+              <h4 className={`text-xs font-bold uppercase tracking-wider m-0 ${t.modalSubLabel}`}>🎨 見た目のテーマ</h4>
+              {expandedSection === 'theme' ? <ChevronUp className={`h-4 w-4 ${t.modalSubLabel}`} /> : <ChevronDown className={`h-4 w-4 ${t.modalSubLabel}`} />}
+            </button>
+            
+            {expandedSection === 'theme' && (
+              <div className="p-3 border-t animate-in slide-in-from-top-2 duration-200">
+                <div className="grid grid-cols-2 gap-3">
+                  {(Object.keys(THEMES) as ThemeKey[]).map(themeKey => {
+                    const ThemeIcon = THEMES[themeKey].icon;
+                    return (
+                      <button
+                        key={themeKey}
+                        onClick={() => setCurrentTheme(themeKey)}
+                        className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border transition-all ${
+                          currentTheme === themeKey
+                            ? t.langBtnActive
+                            : t.langBtnDefault
+                        }`}
+                      >
+                        <ThemeIcon className={`h-5 w-5 ${currentTheme === themeKey ? t.accentText : ""}`} />
+                        <span className="text-sm font-semibold">{THEMES[themeKey].name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* セクション2: すれ違い機能 */}
-          <div>
-            <h4 className={`text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2 ${t.modalSubLabel}`}>
-             <Globe className="h-3 w-3" /> すれ違い翻訳機能
-            </h4>
+          <div className="border rounded-xl overflow-hidden transition-all duration-200">
+            <button 
+              onClick={() => toggleSection('translation')}
+              className={`w-full flex items-center justify-between p-3 transition-colors ${t.modalSectionBg}`}
+            >
+              <h4 className={`text-xs font-bold uppercase tracking-wider m-0 flex items-center gap-2 ${t.modalSubLabel}`}>
+               <Globe className="h-3 w-3" /> すれ違い翻訳機能
+              </h4>
+              {expandedSection === 'translation' ? <ChevronUp className={`h-4 w-4 ${t.modalSubLabel}`} /> : <ChevronDown className={`h-4 w-4 ${t.modalSubLabel}`} />}
+            </button>
             
-            <div className={`flex items-center justify-between p-3 rounded-lg border mb-3 ${t.modalSectionBg}`}>
-              <span className={`text-sm font-medium ${t.modalLabel}`}>機能を有効にする</span>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" className="sr-only peer" checked={isTranslationEnabled} onChange={(e) => setIsTranslationEnabled(e.target.checked)} />
-                <div className={`w-11 h-6 peer-focus:outline-none rounded-full peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${t.toggleBg}`}></div>
-              </label>
-            </div>
+            {expandedSection === 'translation' && (
+              <div className="p-3 border-t animate-in slide-in-from-top-2 duration-200">
+                <div className={`flex items-center justify-between p-3 rounded-lg border mb-3 ${t.modalSectionBg}`}>
+                  <span className={`text-sm font-medium ${t.modalLabel}`}>機能を有効にする</span>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" className="sr-only peer" checked={isTranslationEnabled} onChange={(e) => setIsTranslationEnabled(e.target.checked)} />
+                    <div className={`w-11 h-6 peer-focus:outline-none rounded-full peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${t.toggleBg}`}></div>
+                  </label>
+                </div>
 
-            <div className={`space-y-2 transition-all duration-300 ${isTranslationEnabled ? "opacity-100 h-auto" : "opacity-50 pointer-events-none grayscale"}`}>
-              <label className={`block text-xs font-medium ${t.modalSubLabel}`}>翻訳先の言語（すれ違い先）</label>
-              <div className="grid grid-cols-2 gap-2 max-h-[30vh] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-zinc-500/50">
-                {LANGUAGES.map(lang => (
-                  <button
-                    key={lang.code}
-                    onClick={() => setTargetLanguage(lang.code)}
-                    className={`p-2 rounded-lg text-sm transition-all border ${
-                      targetLanguage === lang.code 
-                        ? t.langBtnActive
-                        : t.langBtnDefault
-                    }`}
-                  >
-                    {lang.name}
-                  </button>
-                ))}
+                <div className={`space-y-2 transition-all duration-300 ${isTranslationEnabled ? "opacity-100 h-auto" : "opacity-50 pointer-events-none grayscale"}`}>
+                  <label className={`block text-xs font-medium ${t.modalSubLabel}`}>翻訳先の言語（すれ違い先）</label>
+                  <div className="grid grid-cols-2 gap-2 max-h-[30vh] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-zinc-500/50">
+                    {LANGUAGES.map(lang => (
+                      <button
+                        key={lang.code}
+                        onClick={() => setTargetLanguage(lang.code)}
+                        className={`p-2 rounded-lg text-sm transition-all border ${
+                          targetLanguage === lang.code 
+                            ? t.langBtnActive
+                            : t.langBtnDefault
+                        }`}
+                      >
+                        {lang.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* セクション3: 数字カオス変換 */}
-          <div>
-            <h4 className={`text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2 ${t.modalSubLabel}`}>
-             <Hash className="h-3 w-3" /> 数字カオス変換機能
-            </h4>
+          <div className="border rounded-xl overflow-hidden transition-all duration-200">
+            <button 
+              onClick={() => toggleSection('number_chaos')}
+              className={`w-full flex items-center justify-between p-3 transition-colors ${t.modalSectionBg}`}
+            >
+              <h4 className={`text-xs font-bold uppercase tracking-wider m-0 flex items-center gap-2 ${t.modalSubLabel}`}>
+               <Hash className="h-3 w-3" /> 数字カオス変換機能
+              </h4>
+              {expandedSection === 'number_chaos' ? <ChevronUp className={`h-4 w-4 ${t.modalSubLabel}`} /> : <ChevronDown className={`h-4 w-4 ${t.modalSubLabel}`} />}
+            </button>
             
-            <div className={`flex items-center justify-between p-3 rounded-lg border mb-3 ${t.modalSectionBg}`}>
-              <span className={`text-sm font-medium ${t.modalLabel}`}>機能を有効にする</span>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" className="sr-only peer" checked={isNumberConversionEnabled} onChange={(e) => setIsNumberConversionEnabled(e.target.checked)} />
-                <div className={`w-11 h-6 peer-focus:outline-none rounded-full peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${t.toggleBg}`}></div>
-              </label>
-            </div>
+            {expandedSection === 'number_chaos' && (
+              <div className="p-3 border-t animate-in slide-in-from-top-2 duration-200">
+                <div className={`flex items-center justify-between p-3 rounded-lg border mb-3 ${t.modalSectionBg}`}>
+                  <span className={`text-sm font-medium ${t.modalLabel}`}>機能を有効にする</span>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" className="sr-only peer" checked={isNumberConversionEnabled} onChange={(e) => setIsNumberConversionEnabled(e.target.checked)} />
+                    <div className={`w-11 h-6 peer-focus:outline-none rounded-full peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${t.toggleBg}`}></div>
+                  </label>
+                </div>
 
-            <div className={`space-y-4 transition-all duration-300 ${isNumberConversionEnabled ? "opacity-100 h-auto" : "opacity-50 pointer-events-none grayscale"}`}>
-              
-              <div>
-                <label className={`block text-xs font-medium mb-1.5 ${t.modalSubLabel}`}>抽出する進数（From）</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {[
-                    { base: 2, label: "2進数" },
-                    { base: 8, label: "8進数" },
-                    { base: 10, label: "10進数" },
-                    { base: 16, label: "16進数" }
-                  ].map(opt => (
-                    <button
-                      key={`from-${opt.base}`}
-                      onClick={() => setFromBase(opt.base)}
-                      className={`p-2 rounded-lg text-xs md:text-sm transition-all border whitespace-nowrap ${
-                        fromBase === opt.base 
-                          ? t.langBtnActive
-                          : t.langBtnDefault
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+                <div className={`space-y-4 transition-all duration-300 ${isNumberConversionEnabled ? "opacity-100 h-auto" : "opacity-50 pointer-events-none grayscale"}`}>
+                  
+                  <div>
+                    <label className={`block text-xs font-medium mb-1.5 ${t.modalSubLabel}`}>抽出する進数（From）</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { base: 2, label: "2進数" },
+                        { base: 8, label: "8進数" },
+                        { base: 10, label: "10進数" },
+                        { base: 16, label: "16進数" }
+                      ].map(opt => (
+                        <button
+                          key={`from-${opt.base}`}
+                          onClick={() => setFromBase(opt.base)}
+                          className={`p-2 rounded-lg text-xs md:text-sm transition-all border whitespace-nowrap ${
+                            fromBase === opt.base 
+                              ? t.langBtnActive
+                              : t.langBtnDefault
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className={`block text-xs font-medium mb-1.5 ${t.modalSubLabel}`}>変換先の進数（To）</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { base: 2, label: "2進数" },
+                        { base: 8, label: "8進数" },
+                        { base: 10, label: "10進数" },
+                        { base: 16, label: "16進数" }
+                      ].map(opt => (
+                        <button
+                          key={`to-${opt.base}`}
+                          onClick={() => setToBase(opt.base)}
+                          className={`p-2 rounded-lg text-xs md:text-sm transition-all border whitespace-nowrap ${
+                            toBase === opt.base 
+                              ? t.langBtnActive
+                              : t.langBtnDefault
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                 </div>
               </div>
-
-              <div>
-                <label className={`block text-xs font-medium mb-1.5 ${t.modalSubLabel}`}>変換先の進数（To）</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {[
-                    { base: 2, label: "2進数" },
-                    { base: 8, label: "8進数" },
-                    { base: 10, label: "10進数" },
-                    { base: 16, label: "16進数" }
-                  ].map(opt => (
-                    <button
-                      key={`to-${opt.base}`}
-                      onClick={() => setToBase(opt.base)}
-                      className={`p-2 rounded-lg text-xs md:text-sm transition-all border whitespace-nowrap ${
-                        toBase === opt.base 
-                          ? t.langBtnActive
-                          : t.langBtnDefault
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-            </div>
+            )}
           </div>
 
           {/* セクション4: 時空カオス（遅延受信） */}
-          <div>
-            <h4 className={`text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2 ${t.modalSubLabel}`}>
-             <Clock className="h-3 w-3" /> 時空カオス（遅延受信）機能
-            </h4>
+          <div className="border rounded-xl overflow-hidden transition-all duration-200">
+            <button 
+              onClick={() => toggleSection('time_chaos')}
+              className={`w-full flex items-center justify-between p-3 transition-colors ${t.modalSectionBg}`}
+            >
+              <h4 className={`text-xs font-bold uppercase tracking-wider m-0 flex items-center gap-2 ${t.modalSubLabel}`}>
+               <Clock className="h-3 w-3" /> 時空カオス（遅延受信）機能
+              </h4>
+              {expandedSection === 'time_chaos' ? <ChevronUp className={`h-4 w-4 ${t.modalSubLabel}`} /> : <ChevronDown className={`h-4 w-4 ${t.modalSubLabel}`} />}
+            </button>
             
-            <div className={`flex items-center justify-between p-3 rounded-lg border mb-3 ${t.modalSectionBg}`}>
-              <span className={`text-sm font-medium ${t.modalLabel}`}>機能を有効にする</span>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" className="sr-only peer" checked={isDelayEnabled} onChange={(e) => setIsDelayEnabled(e.target.checked)} />
-                <div className={`w-11 h-6 peer-focus:outline-none rounded-full peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${t.toggleBg}`}></div>
-              </label>
-            </div>
+            {expandedSection === 'time_chaos' && (
+              <div className="p-3 border-t animate-in slide-in-from-top-2 duration-200">
+                <div className={`flex items-center justify-between p-3 rounded-lg border mb-3 ${t.modalSectionBg}`}>
+                  <span className={`text-sm font-medium ${t.modalLabel}`}>機能を有効にする</span>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" className="sr-only peer" checked={isDelayEnabled} onChange={(e) => setIsDelayEnabled(e.target.checked)} />
+                    <div className={`w-11 h-6 peer-focus:outline-none rounded-full peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${t.toggleBg}`}></div>
+                  </label>
+                </div>
 
-            <div className={`transition-all duration-300 ${isDelayEnabled ? "opacity-100" : "opacity-50 pointer-events-none grayscale"}`}>
-              <label className={`block text-xs font-medium mb-1.5 ${t.modalSubLabel}`}>遅延時間（相手に届くまで）</label>
-              <div className="grid grid-cols-3 gap-2">
-                {DELAY_OPTIONS.map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setDelayMinutes(opt.value)}
-                    className={`p-2 rounded-lg text-xs transition-all border whitespace-nowrap ${
-                      delayMinutes === opt.value
-                        ? t.langBtnActive
-                        : t.langBtnDefault
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+                <div className={`transition-all duration-300 ${isDelayEnabled ? "opacity-100" : "opacity-50 pointer-events-none grayscale"}`}>
+                  <label className={`block text-xs font-medium mb-1.5 ${t.modalSubLabel}`}>遅延時間（相手に届くまで）</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {DELAY_OPTIONS.map(opt => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setDelayMinutes(opt.value)}
+                        className={`p-2 rounded-lg text-xs transition-all border whitespace-nowrap ${
+                          delayMinutes === opt.value
+                            ? t.langBtnActive
+                            : t.langBtnDefault
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
+        </div>
+
+        <div className="pt-4 mt-2 border-t shrink-0">
           <button 
             onClick={onClose}
-            className={`w-full mt-2 py-2.5 rounded-lg transition-all active:scale-95 ${t.modalConfirmBtn}`}
+            className={`w-full py-2.5 rounded-lg transition-all active:scale-95 ${t.modalConfirmBtn}`}
           >
             完了して閉じる
           </button>

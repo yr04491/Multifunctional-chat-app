@@ -7,10 +7,19 @@ import type { User } from "firebase/auth";
 import { translateText } from "@/app/actions/translate";
 import { THEMES, ThemeKey } from "@/lib/constants";
 import { OptionsModal } from "./OptionsModal";
+import { MyPageModal } from "./MyPageModal";
+import { useUserProfile } from "@/lib/useUserProfile";
+import { User as UserIcon } from "lucide-react";
 
 export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onLeave: () => void }) {
   const { messages, sendMessage, editMessage } = useChat();
   const [newMessage, setNewMessage] = useState("");
+  
+  const [isMyPageOpen, setIsMyPageOpen] = useState(false);
+  const { profile } = useUserProfile(currentUser);
+
+  const senderName = profile?.displayName || currentUser.displayName || "User";
+  const senderAvatar = profile?.avatar || currentUser.photoURL || null;
   
   // 編集用の状態管理
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -91,8 +100,8 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
     await sendMessage(
       textToSend, 
       currentUser.uid, 
-      currentUser.displayName || "User", 
-      currentUser.photoURL,
+      senderName, 
+      senderAvatar,
       textToSend,
       processedTranslated,
       isTranslationEnabled,
@@ -144,7 +153,7 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
 
   const startEditing = (msg: Message) => {
     setEditingId(msg.id);
-    setEditText(msg.text);
+    setEditText(msg.originalText);
   };
 
   const saveEdit = async (id: string) => {
@@ -160,20 +169,20 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
     <div className={`flex h-[100dvh] flex-col transition-colors duration-500 font-sans ${t.appBg}`}>
       {/* ヘッダーエリア */}
       <header className={`flex h-16 shrink-0 items-center justify-between border-b px-4 sm:px-6 backdrop-blur-md sticky top-0 z-10 transition-colors duration-500 ${t.headerBg}`}>
-        <div className="flex items-center gap-3">
-          {currentUser.photoURL ? (
+        <button onClick={() => setIsMyPageOpen(true)} className="flex items-center gap-3 group text-left transition-transform active:scale-95" title="マイページを開く">
+          {senderAvatar ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={currentUser.photoURL} alt="Profile" className={`h-10 w-10 rounded-full border object-cover shadow-lg ${t.headerBg}`} />
+            <img src={senderAvatar} alt="Profile" className={`h-10 w-10 bg-white/10 rounded-full border object-cover shadow-lg group-hover:ring-2 ${t.headerBg}`} />
           ) : (
-            <div className={`flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-tr font-bold shadow-lg ${t.headerIconBg}`}>
-              {(currentUser.displayName || "U").charAt(0).toUpperCase()}
+            <div className={`flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-tr font-bold shadow-lg group-hover:ring-2 ${t.headerIconBg}`}>
+              {senderName.charAt(0).toUpperCase()}
             </div>
           )}
           <div>
-            <span className={`block font-semibold leading-tight ${t.headerText}`}>{currentUser.displayName || "User"}</span>
-            <span className={`block text-xs ${t.headerMuted}`}>Online</span>
+            <span className={`block font-semibold leading-tight group-hover:underline decoration-1 underline-offset-2 ${t.headerText}`}>{senderName}</span>
+            <span className={`block text-xs flex items-center gap-1 opacity-80 mt-0.5 ${t.headerMuted}`}><UserIcon className="w-3 h-3"/> Profile Settings</span>
           </div>
-        </div>
+        </button>
         <div className="flex items-center gap-2 sm:gap-4">
           <button
             onClick={() => setIsOptionModalOpen(true)}
@@ -218,27 +227,48 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
             }))
             .sort((a, b) => a.sortKey - b.sortKey);
 
-          return displayMessages.map((msg) => {
+          return displayMessages.map((msg, index) => {
           const isMine = msg.uid === currentUser.uid;
           const isSystem = msg.sender === "System";
           const isEditingThis = editingId === msg.id;
 
+          // 日付の変わり目チェック
+          const currentDateStr = msg.timestamp ? msg.timestamp.toLocaleDateString() : "";
+          let previousDateStr = null;
+          if (index > 0) {
+            const prevMsg = displayMessages[index - 1];
+            previousDateStr = prevMsg.timestamp ? prevMsg.timestamp.toLocaleDateString() : "";
+          }
+          const isNewDate = currentDateStr && currentDateStr !== previousDateStr;
+
+          const dateSeparator = isNewDate ? (
+            <div className="flex justify-center my-6 w-full shrink-0">
+              <span className={`text-[11px] font-medium px-3 py-1 rounded-full shadow-sm backdrop-blur-md opacity-80 border ${t.sysMessage}`}>
+                {msg.timestamp?.toLocaleDateString([], { month: 'numeric', day: 'numeric', weekday: 'short' })}
+              </span>
+            </div>
+          ) : null;
+
           // システムメッセージのデザイン
           if (isSystem) {
              return (
-               <div key={msg.id} className="flex justify-center my-4">
-                 <span className={`text-xs px-4 py-1.5 rounded-full border backdrop-blur-sm ${t.sysMessage}`}>
-                   {msg.text}
-                 </span>
+               <div key={msg.id} className="flex flex-col w-full">
+                 {dateSeparator}
+                 <div className="flex justify-center my-4 w-full">
+                   <span className={`text-xs px-4 py-1.5 rounded-full border backdrop-blur-sm ${t.sysMessage}`}>
+                     {msg.text}
+                   </span>
+                 </div>
                </div>
              );
           }
 
           return (
-            <div
-              key={msg.id}
-              className={`flex flex-col group/message animate-in fade-in slide-in-from-bottom-2 duration-300 ${isMine ? "items-end" : "items-start"}`}
-            >
+            <div key={msg.id} className="flex flex-col w-full">
+              {dateSeparator}
+              <div
+                className={`flex flex-col group/message animate-in fade-in slide-in-from-bottom-2 duration-300 ${isMine ? "items-end" : "items-start"}`}
+              >
               {/* アイコンと名前（相手の場合） */}
               {!isMine && (
                 <div className="mb-1.5 ml-1 flex items-end gap-2">
@@ -262,7 +292,7 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
                 {isMine && !isEditingThis && (
                   <button
                     onClick={() => startEditing(msg)}
-                    className="p-2 rounded-full opacity-0 transition-all hover:bg-black/10 group-hover/message:opacity-100 flex-shrink-0 opacity-50"
+                    className="p-2 rounded-full opacity-0 transition-all hover:bg-black/10 group-hover/message:opacity-100 flex-shrink-0"
                     title="Edit message"
                   >
                     <Edit2 className="h-4 w-4" />
@@ -351,6 +381,7 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
                 </div>
               </div>
             </div>
+            </div>
           );
         });
         })()}
@@ -411,6 +442,14 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
         setIsDelayEnabled={setIsDelayEnabled}
         delayMinutes={delayMinutes}
         setDelayMinutes={setDelayMinutes}
+      />
+
+      {/* マイページモーダル */}
+      <MyPageModal
+        isOpen={isMyPageOpen}
+        onClose={() => setIsMyPageOpen(false)}
+        currentTheme={currentTheme}
+        currentUser={currentUser}
       />
     </div>
   );
