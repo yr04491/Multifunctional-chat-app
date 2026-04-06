@@ -5,6 +5,7 @@ import { Send, Edit2, Check, LogOut, Globe, Loader2, Settings } from "lucide-rea
 import { useChat, Message } from "@/lib/useChat";
 import type { User } from "firebase/auth";
 import { translateText } from "@/app/actions/translate";
+import { convertToTeineigo } from "@/lib/honorificRules";
 import { THEMES, ThemeKey } from "@/lib/constants";
 import { OptionsModal } from "./OptionsModal";
 import { MyPageModal } from "./MyPageModal";
@@ -35,6 +36,8 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
   const [fromBase, setFromBase] = useState(10);
   const [toBase, setToBase] = useState(2);
 
+  const [isHonorificEnabled, setIsHonorificEnabled] = useState(false);
+
   // 時空カオス（遅延受信）機能
   const [isDelayEnabled, setIsDelayEnabled] = useState(false);
   const [delayMinutes, setDelayMinutes] = useState(0);
@@ -62,13 +65,20 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    const textToSend = newMessage.trim();
-    if (!textToSend) return;
+    const rawInputText = newMessage.trim();
+    if (!rawInputText) return;
+
+    let textToSend = rawInputText;
+
+    // 0. Honorific Conversion (Permanent transform before anything else)
+    if (isHonorificEnabled) {
+      textToSend = convertToTeineigo(rawInputText);
+    }
 
     let processedTranslated = null;
 
     if (isTranslationEnabled || isNumberConversionEnabled) {
-      let currentText = textToSend;
+      let currentText = textToSend; // Translation happens ON the honorific text
 
       // 1. Language translation
       if (isTranslationEnabled) {
@@ -84,7 +94,7 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
 
       // 2. Number Conversion
       if (isNumberConversionEnabled) {
-        let regex = /\d+/g;
+        let regex = /\\d+/g;
         if (fromBase === 2) regex = /[01]+/g;
         if (fromBase === 8) regex = /[0-7]+/g;
         if (fromBase === 16) regex = /[0-9A-Fa-f]+/g;
@@ -98,11 +108,11 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
     }
 
     await sendMessage(
-      textToSend, 
+      textToSend, // Fallback/honorific converted text DB 'text' field
       currentUser.uid, 
       senderName, 
       senderAvatar,
-      textToSend,
+      rawInputText, // ORIGINAL text strictly kept to what sender typed
       processedTranslated,
       isTranslationEnabled,
       targetLanguage,
@@ -334,7 +344,7 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
                   ) : (
                     <>
                       <p className={`leading-relaxed break-words whitespace-pre-wrap text-sm md:text-base ${isMine ? "" : ""}`}>
-                        {isMine ? msg.originalText : ((msg.isTranslationEnabled || msg.isNumberConversionEnabled) && msg.translatedText ? msg.translatedText : msg.originalText)}
+                        {isMine ? msg.originalText : ((msg.isTranslationEnabled || msg.isNumberConversionEnabled) && msg.translatedText ? msg.translatedText : msg.text)}
                       </p>
                       
                       {/* 受信者側の再翻訳UI */}
@@ -442,6 +452,8 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
         setIsDelayEnabled={setIsDelayEnabled}
         delayMinutes={delayMinutes}
         setDelayMinutes={setDelayMinutes}
+        isHonorificEnabled={isHonorificEnabled}
+        setIsHonorificEnabled={setIsHonorificEnabled}
       />
 
       {/* マイページモーダル */}

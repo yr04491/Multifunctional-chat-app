@@ -39,6 +39,9 @@ type OptionsModalProps = {
   setIsDelayEnabled: (enabled: boolean) => void;
   delayMinutes: number;
   setDelayMinutes: (minutes: number) => void;
+  // Honorific Conversion
+  isHonorificEnabled: boolean;
+  setIsHonorificEnabled: (enabled: boolean) => void;
 };
 
 export function OptionsModal({
@@ -60,6 +63,8 @@ export function OptionsModal({
   setIsDelayEnabled,
   delayMinutes,
   setDelayMinutes,
+  isHonorificEnabled,
+  setIsHonorificEnabled,
 }: OptionsModalProps) {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
@@ -282,6 +287,34 @@ export function OptionsModal({
                     ))}
                   </div>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* セクション5: 敬語自動変換 */}
+          <div className="border rounded-xl overflow-hidden transition-all duration-200">
+            <button 
+              onClick={() => toggleSection('honorific')}
+              className={`w-full flex items-center justify-between p-3 transition-colors ${t.modalSectionBg}`}
+            >
+              <h4 className={`text-xs font-bold uppercase tracking-wider m-0 flex items-center gap-2 ${t.modalSubLabel}`}>
+               <Settings className="h-3 w-3" /> 敬語自動変換機能
+              </h4>
+              {expandedSection === 'honorific' ? <ChevronUp className={`h-4 w-4 ${t.modalSubLabel}`} /> : <ChevronDown className={`h-4 w-4 ${t.modalSubLabel}`} />}
+            </button>
+            
+            {expandedSection === 'honorific' && (
+              <div className="p-3 border-t animate-in slide-in-from-top-2 duration-200">
+                <div className={`flex items-center justify-between p-3 rounded-lg border mb-1 ${t.modalSectionBg}`}>
+                  <span className={`text-sm font-medium ${t.modalLabel}`}>機能を有効にする</span>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" className="sr-only peer" checked={isHonorificEnabled} onChange={(e) => setIsHonorificEnabled(e.target.checked)} />
+                    <div className={`w-11 h-6 peer-focus:outline-none rounded-full peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${t.toggleBg}`}></div>
+                  </label>
+                </div>
+                <p className={`text-[10px] mt-2 opacity-80 ${t.modalSubLabel}`}>
+                  ※ 有効にすると、送信メッセージが自動的に敬語に変換されます
+                </p>
               </div>
             )}
           </div>
