@@ -18,6 +18,7 @@ export type Message = {
   translationLanguage?: string;
   isNumberConversionEnabled: boolean;
   numberBase?: number;
+  isHonorificEnabled?: boolean;
 };
 
 export function useChat() {
@@ -52,6 +53,7 @@ export function useChat() {
           translationLanguage: data.translationLanguage || "en",
           isNumberConversionEnabled: data.isNumberConversionEnabled || false,
           numberBase: data.numberBase || 2,
+          isHonorificEnabled: data.isHonorificEnabled || false,
         };
       });
       setMessages(msgs);
@@ -72,7 +74,8 @@ export function useChat() {
     translationLanguage: string,
     isNumberConversionEnabled: boolean,
     numberBase: number,
-    delayMinutes: number
+    delayMinutes: number,
+    isHonorificEnabled: boolean = false
   ) => {
     try {
       // 遅延時間を計算してrevealAtをセット
@@ -94,6 +97,7 @@ export function useChat() {
         translationLanguage,
         isNumberConversionEnabled,
         numberBase,
+        isHonorificEnabled,
       });
     } catch (e) {
       console.error("メッセージ送信エラー:", e);
@@ -117,5 +121,19 @@ export function useChat() {
     }
   };
 
-  return { messages, sendMessage, editMessage };
+  // 敬語変換バグの匿名報告
+  const reportHonorificBug = async (originalText: string, convertedText: string, messageId: string) => {
+    try {
+      await addDoc(collection(db, "keigo_reports"), {
+        originalText,
+        convertedText,
+        messageId,
+        reportedAt: serverTimestamp(),
+      });
+    } catch (e) {
+      console.error("バグ報告エラー:", e);
+    }
+  };
+
+  return { messages, sendMessage, editMessage, reportHonorificBug };
 }

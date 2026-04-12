@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Edit2, Check, LogOut, Globe, Loader2, Settings } from "lucide-react";
+import { Send, Edit2, Check, LogOut, Globe, Loader2, Settings, Bug, RotateCcw } from "lucide-react";
 import { useChat, Message } from "@/lib/useChat";
 import type { User } from "firebase/auth";
 import { translateText } from "@/app/actions/translate";
@@ -13,8 +13,12 @@ import { useUserProfile } from "@/lib/useUserProfile";
 import { User as UserIcon } from "lucide-react";
 
 export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onLeave: () => void }) {
-  const { messages, sendMessage, editMessage } = useChat();
+  const { messages, sendMessage, editMessage, reportHonorificBug } = useChat();
   const [newMessage, setNewMessage] = useState("");
+  
+  // バグ報告・復元用の状態管理
+  const [revertedMessages, setRevertedMessages] = useState<Record<string, boolean>>({});
+  const [reportedMessages, setReportedMessages] = useState<Record<string, boolean>>({});
   
   const [isMyPageOpen, setIsMyPageOpen] = useState(false);
   const { profile } = useUserProfile(currentUser);
@@ -118,7 +122,8 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
       targetLanguage,
       isNumberConversionEnabled,
       toBase,
-      isDelayEnabled ? (delayMinutes === -1 ? Math.floor(Math.random() * 180) + 1 : delayMinutes) : 0
+      isDelayEnabled ? (delayMinutes === -1 ? Math.floor(Math.random() * 180) + 1 : delayMinutes) : 0,
+      isHonorificEnabled
     );
     setNewMessage("");
   };
@@ -344,7 +349,14 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
                   ) : (
                     <>
                       <p className={`leading-relaxed break-words whitespace-pre-wrap text-sm md:text-base ${isMine ? "" : ""}`}>
-                        {isMine ? msg.originalText : ((msg.isTranslationEnabled || msg.isNumberConversionEnabled) && msg.translatedText ? msg.translatedText : msg.text)}
+                        {isMine 
+                          ? msg.originalText 
+                          : (
+                              revertedMessages[msg.id] 
+                                ? msg.originalText 
+                                : ((msg.isTranslationEnabled || msg.isNumberConversionEnabled) && msg.translatedText ? msg.translatedText : msg.text)
+                            )
+                        }
                       </p>
                       
                       {/* 受信者側の再翻訳UI */}
@@ -376,6 +388,34 @@ export function ChatInterface({ currentUser, onLeave }: { currentUser: User; onL
                               元のメッセージに復号する🔍
                             </button>
                           )}
+                        </div>
+                      )}
+
+                      {/* 敬語変換バグ報告・元に戻すUI */}
+                      {!isMine && msg.isHonorificEnabled && (
+                        <div className="mt-3 flex items-center justify-end gap-1.5 border-t border-black/10 pt-2">
+                          <button 
+                            onClick={() => setRevertedMessages(prev => ({ ...prev, [msg.id]: !prev[msg.id] }))}
+                            className={`flex items-center gap-1 text-[10px] sm:text-[11px] transition-colors px-2 py-1 rounded-md bg-black/5 hover:bg-black/10 text-black/70 ${t.backTranslateBtn.replace('bg-button-back-translate', '')}`}
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                            {revertedMessages[msg.id] ? "変換後のテキストに戻す" : "元のテキストを見る"}
+                          </button>
+
+                          <button 
+                            onClick={() => {
+                              if (reportedMessages[msg.id]) return;
+                              if (window.confirm("この敬語変換は不自然でしたか？運営にバグ報告として送信しますか？")) {
+                                reportHonorificBug(msg.originalText, msg.text, msg.id);
+                                setReportedMessages(prev => ({ ...prev, [msg.id]: true }));
+                              }
+                            }}
+                            disabled={reportedMessages[msg.id]}
+                            className={`flex items-center gap-1 text-[10px] sm:text-[11px] transition-colors px-2 py-1 rounded-md ${reportedMessages[msg.id] ? 'bg-zinc-500/10 text-zinc-500 cursor-not-allowed' : 'bg-red-500/10 text-red-500 hover:bg-red-500/20'}`}
+                          >
+                            <Bug className="h-3 w-3" />
+                            {reportedMessages[msg.id] ? "報告済" : "変換バグを報告"}
+                          </button>
                         </div>
                       )}
 
