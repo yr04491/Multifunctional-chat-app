@@ -118,8 +118,16 @@ const lexicon: LexiconEntry[] = [
 //
 // 文脈判定用（「次のトークンが助詞か」を Parser が判断するため）。
 // 変換は行わない。長い助詞を先に並べて最長一致を保証する。
-// ============================================================
+// MULTI_CHAR_HIRAGANA
+// 「な」「で」のような1文字助詞で語句が不規則にちぎれるのを防ぐための固定ひらがな群。
+// Lexerではこれらを無傷な1つの 'hiragana' トークンとして扱う。
+const MULTI_CHAR_HIRAGANA: readonly string[] = [
+  'なかった', 'なくて', 'ないです', 'ない', 'なので', 'なんだ', 
+  'だけど', 'だから', 'ですから', 'です', 'でした', 'でしょう', 
+  'ます', 'ました', 'ません'
+].sort((a, b) => b.length - a.length);
 
+// PARTICLE: 助詞（文脈の切れ目となるもの）
 const PARTICLE_LIST: readonly string[] = [
   // 2文字以上の助詞（長い順）
   'ばかり', 'ごろ', 'から', 'まで', 'より', 'だけ', 'ほど', 'など',
@@ -187,27 +195,38 @@ export function tokenize(text: string): Token[] {
     // lexicon は surface の長さで降順ソート済みなので、
     // 最初にヒットしたエントリが常に最長一致になる。
     // ──────────────────────────────────────────────────────
-    let matched = false;
+    // 1. 辞書マッチ（最長一致）
+    let hit = false;
     for (const entry of lexicon) {
       if (remaining.startsWith(entry.surface)) {
         tokens.push({
           surface: entry.surface,
-          pos: entry.pos,
+          pos: entry.pos as POS,
           replacement: entry.replacement,
           stem: entry.stem,
           conjugationType: entry.conjugationType,
           masuForm: entry.masuForm,
         });
         pos += entry.surface.length;
-        matched = true;
+        hit = true;
         break;
       }
     }
-    if (matched) continue;
+    if (hit) continue;
 
-    // ──────────────────────────────────────────────────────
-    // Step 2: 助詞の最長一致マッチ
-    // ──────────────────────────────────────────────────────
+    // 2. ひらがな結合保護マッチ
+    let hw = false;
+    for (const w of MULTI_CHAR_HIRAGANA) {
+      if (remaining.startsWith(w)) {
+        tokens.push({ surface: w, pos: 'hiragana' });
+        pos += w.length;
+        hw = true;
+        break;
+      }
+    }
+    if (hw) continue;
+
+    // 3. 助詞の最長一致マッチ
     let particleMatched = false;
     for (const p of PARTICLE_LIST) {
       if (remaining.startsWith(p)) {
